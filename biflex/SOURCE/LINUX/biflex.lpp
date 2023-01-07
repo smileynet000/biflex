@@ -1,0 +1,124 @@
+%{
+/*
+ Copyright 2020 Dennis Earl Smiley
+
+ This file is part of biflex.
+
+    biflex is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    biflex is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with pnfasm.  If not, see <https://www.gnu.org/licenses/>.
+*/
+/* 
+REM CHANGELOG
+REM =========
+ 
+REM 8/5/20 Origional a - 1. The first version.
+*/
+/* Prologue */
+#include <desLib/deslib.hpp>
+
+
+void yyerror(char const * c);
+String remove_extension(String file);
+
+
+FILE * output;
+String output2;
+%}
+/* Flex Definitions */
+%x comment
+
+
+/* Flex Patterns Below %% */
+%%
+
+"%%%\n\n\n"	 {
+	  String outputname = output2 + (char *)".lpp";
+	  fclose(output);
+          output = fopen(outputname.getString().c_str(), "w");
+          if (!output)
+          {
+           yyerror("can't open file for write");
+           return -1;
+          }
+	 }
+
+"%"	fprintf(output, "%s", yytext);
+
+[\n\t]+	fprintf(output, "%s", yytext);
+
+"/**"	BEGIN(comment);
+
+<comment>"**/"	BEGIN(INITIAL);
+
+<comment>.	/* Eat up */
+
+.|\n	fprintf(output, "%s", yytext);
+
+%%
+/* Additional Code */
+int main(int argc, char ** argv)
+{
+ if (argc == 2)
+ {
+  FILE * input = fopen(argv[1], "r");
+  if (!input)
+  {
+   yyerror("can't open file");
+   return -1;
+  }
+  yyin = input;
+
+  String outputname = remove_extension(argv[1]);
+  output2 = outputname;
+  outputname += (char *)".ypp";
+  output = fopen(outputname.getString().c_str(), "w");
+  if (!output)
+  {
+   yyerror("can't open file for write");
+   return -1;
+  }
+  
+  int ret = yylex();
+
+
+  return ret;
+ }
+ else
+  yyerror("can't find input file or output file.");
+}
+
+void yyerror(char const * c)
+{
+ cout << "* ERROR: " << c << endl;
+}
+
+
+String remove_extension(String file)
+{
+ String ret;
+
+ // Old
+ // file = strrev((char *)file.getString().c_str());
+ file = file.reverse();
+ unsigned long pos = file.getString().find('.');
+ if (pos == string::npos)
+  ret = file;
+
+ ret = file.getString().substr(pos + 1);
+ // Old
+ //ret = strrev((char *)ret.getString().c_str());
+ file = file.reverse();
+
+
+ return ret;
+}
